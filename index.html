@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Habitudes">
+<meta name="theme-color" content="#0d0d0d">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Habitudes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --surface2: #1e1e1e;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #f0ede6;
+    --text2: #888;
+    --text3: #555;
+    --accent: #c8b97a;
+    --accent-dim: rgba(200,185,122,0.12);
+    --danger: #e05a5a;
+    --danger-dim: rgba(224,90,90,0.12);
+    --success: #5ab87a;
+    --success-dim: rgba(90,184,122,0.12);
+    --radius: 14px;
+    --radius-sm: 8px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    padding-bottom: calc(80px + var(--safe-bottom));
+    overscroll-behavior: none;
+  }
+
+  .header {
+    padding: calc(var(--safe-top) + 20px) 20px 0;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 10;
+  }
+
+  .header-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .header-date {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    line-height: 1.1;
+    color: var(--text);
+  }
+
+  .header-date span {
+    display: block;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    color: var(--text2);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .clock {
+    font-family: 'DM Serif Display', serif;
+    font-size: 32px;
+    color: var(--accent);
+    letter-spacing: -1px;
+  }
+
+  .progress-bar-wrap {
+    height: 2px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-bottom: 6px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.5s ease;
+  }
+
+  .progress-label {
+    font-size: 11px;
+    color: var(--text3);
+    letter-spacing: 0.05em;
+    margin-bottom: 16px;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 0;
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    padding: 3px;
+    border: 0.5px solid var(--border);
+  }
+
+  .tab {
+    flex: 1;
+    padding: 8px;
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--text2);
+    background: none;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .tab.active {
+    background: var(--surface2);
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .header-sep {
+    height: 0.5px;
+    background: var(--border);
+    margin: 16px -20px 0;
+  }
+
+  .section {
+    display: none;
+    padding: 20px;
+  }
+  .section.active { display: block; }
+
+  .habits-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text3);
+  }
+  .habits-empty p { font-size: 14px; line-height: 1.7; }
+
+  .habit-group-label {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin: 20px 0 10px;
+  }
+
+  .habit-card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 10px;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .habit-card.done {
+    border-color: rgba(90,184,122,0.2);
+    background: linear-gradient(135deg, rgba(90,184,122,0.06) 0%, var(--surface) 60%);
+  }
+
+  .habit-card.missed {
+    border-color: rgba(224,90,90,0.2);
+    background: linear-gradient(135deg, rgba(224,90,90,0.06) 0%, var(--surface) 60%);
+  }
+
+  .habit-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  /* Checkmark circle — toggles null ↔ done only */
+  .habit-check {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border2);
+    background: none;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    position: relative;
+  }
+
+  .habit-check.done {
+    background: var(--success);
+    border-color: var(--success);
+  }
+
+  .habit-check.done::after {
+    content: '';
+    width: 10px;
+    height: 6px;
+    border-left: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    transform: rotate(-45deg) translateY(-1px);
+  }
+
+  .habit-check.missed {
+    background: var(--danger);
+    border-color: var(--danger);
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  .habit-check.missed::after {
+    content: '×';
+    color: #fff;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1;
+  }
+
+  .habit-info { flex: 1; min-width: 0; }
+
+  .habit-name {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .habit-card.done .habit-name { color: var(--text2); text-decoration: line-through; }
+  .habit-card.missed .habit-name { color: var(--text2); }
+
+  .habit-streak {
+    font-size: 12px;
+    color: var(--text3);
+    margin-top: 2px;
+  }
+
+  .habit-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .btn-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    background: none;
+    border: 0.5px solid var(--border);
+    color: var(--text2);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: all 0.15s;
+  }
+
+  .btn-icon:active { transform: scale(0.95); }
+  .btn-icon:hover { border-color: var(--border2); color: var(--text); }
+
+  /* The ✗ "missed" button */
+  .btn-miss {
+    color: var(--danger);
+    border-color: rgba(224,90,90,0.3);
+  }
+  .btn-miss:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-dim); }
+
+  .habit-reflection {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 0.5px solid var(--border);
+  }
+
+  .reflection-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--danger);
+    background: var(--danger-dim);
+    padding: 3px 8px;
+    border-radius: 20px;
+    margin-bottom: 6px;
+  }
+
+  .reflection-text {
+    font-size: 13px;
+    color: var(--text2);
+    font-style: italic;
+    line-height: 1.5;
+  }
+
+  /* Tooltip hint under missed card with no reflection */
+  .reflection-prompt {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 8px 10px;
+    background: var(--danger-dim);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    color: var(--danger);
+    cursor: pointer;
+  }
+
+  .fab {
+    position: fixed;
+    bottom: calc(80px + var(--safe-bottom) + 16px);
+    right: 20px;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    color: #0d0d0d;
+    box-shadow: 0 4px 20px rgba(200,185,122,0.3);
+    transition: transform 0.15s, box-shadow 0.15s;
+    z-index: 20;
+  }
+
+  .fab:active { transform: scale(0.93); box-shadow: 0 2px 10px rgba(200,185,122,0.2); }
+
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: calc(60px + var(--safe-bottom));
+    padding-bottom: var(--safe-bottom);
+    background: rgba(13,13,13,0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 0.5px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-around;
+    padding-top: 6px;
+    z-index: 30;
+  }
+
+  .nav-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px 12px;
+    color: var(--text3);
+    font-family: 'DM Sans', sans-serif;
+    transition: color 0.15s;
+  }
+
+  .nav-btn.active { color: var(--accent); }
+
+  .nav-btn svg {
+    width: 22px;
+    height: 22px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .nav-btn span { font-size: 10px; font-weight: 400; }
+
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 100;
+    display: flex;
+    align-items: flex-end;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+  }
+
+  .modal-overlay.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .modal {
+    background: var(--surface);
+    border-radius: var(--radius) var(--radius) 0 0;
+    padding: 20px;
+    padding-bottom: calc(20px + var(--safe-bottom));
+    width: 100%;
+    transform: translateY(40px);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    border-top: 0.5px solid var(--border2);
+  }
+
+  .modal-overlay.open .modal { transform: translateY(0); }
+
+  .modal-handle {
+    width: 36px;
+    height: 4px;
+    background: var(--border2);
+    border-radius: 4px;
+    margin: 0 auto 20px;
+  }
+
+  .modal-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+    margin-bottom: 16px;
+  }
+
+  .modal label {
+    display: block;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text2);
+    margin-bottom: 6px;
+  }
+
+  .modal input, .modal textarea {
+    width: 100%;
+    background: var(--surface2);
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    outline: none;
+    margin-bottom: 16px;
+    resize: none;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  .modal input:focus, .modal textarea:focus { border-color: var(--accent); }
+
+  .modal-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--accent);
+    color: #0d0d0d;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+
+  .modal-btn:active { opacity: 0.85; transform: scale(0.99); }
+
+  .modal-btn-secondary {
+    width: 100%;
+    padding: 13px;
+    background: none;
+    color: var(--text2);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: border-color 0.15s;
+  }
+
+  .modal-btn-secondary:hover { border-color: var(--border2); color: var(--text); }
+
+  .reflection-card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 10px;
+    border-left: 2px solid var(--danger);
+  }
+
+  .reflection-card.resolved {
+    border-left-color: var(--success);
+    opacity: 0.6;
+  }
+
+  .reflection-habit {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text3);
+    margin-bottom: 4px;
+  }
+
+  .reflection-q {
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.5;
+    margin-bottom: 6px;
+  }
+
+  .reflection-meta { font-size: 11px; color: var(--text3); }
+
+  .empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--text3);
+  }
+
+  .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; line-height: 1.7; }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+
+  .stat-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+  .stat-value { font-family: 'DM Serif Display', serif; font-size: 32px; color: var(--accent); }
+  .stat-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+  .section-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+    margin-bottom: 16px;
+  }
+
+  .notif-dot {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 8px;
+    height: 8px;
+    background: var(--danger);
+    border-radius: 50%;
+    border: 2px solid var(--bg);
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="header-date">
+      <span id="day-label">Lundi</span>
+      <div id="date-label">14 mai</div>
+    </div>
+    <div class="clock" id="clock">00:00</div>
+  </div>
+  <div class="progress-bar-wrap">
+    <div class="progress-bar-fill" id="progress-bar" style="width:0%"></div>
+  </div>
+  <div class="progress-label" id="progress-label">0 / 0 habitudes complétées</div>
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('habitudes', this)">Aujourd'hui</button>
+    <button class="tab" onclick="showTab('reflexions', this)">Réflexions</button>
+    <button class="tab" onclick="showTab('stats', this)">Stats</button>
+  </div>
+  <div class="header-sep"></div>
+</div>
+
+<div class="section active" id="tab-habitudes">
+  <div id="habits-container"></div>
+</div>
+
+<div class="section" id="tab-reflexions">
+  <div class="section-title">Ce que j'aurais pu faire</div>
+  <div id="reflections-container"></div>
+</div>
+
+<div class="section" id="tab-stats">
+  <div class="section-title">Vue d'ensemble</div>
+  <div class="stats-grid" id="stats-grid"></div>
+  <div id="habit-stats-list"></div>
+</div>
+
+<button class="fab" id="fab" onclick="openAddHabit()">+</button>
+
+<div class="bottom-nav">
+  <button class="nav-btn active" onclick="showTab('habitudes', null, true)" id="nav-habitudes">
+    <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+    <span>Habitudes</span>
+  </button>
+  <button class="nav-btn" onclick="showTab('reflexions', null, true)" id="nav-reflexions">
+    <div style="position:relative;display:inline-flex">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      <div class="notif-dot" id="reflections-dot" style="display:none"></div>
+    </div>
+    <span>Réflexions</span>
+  </button>
+  <button class="nav-btn" onclick="showTab('stats', null, true)" id="nav-stats">
+    <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    <span>Stats</span>
+  </button>
+</div>
+
+<!-- MODAL: Add Habit -->
+<div class="modal-overlay" id="modal-add">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Nouvelle habitude</div>
+    <label>Nom de l'habitude</label>
+    <input type="text" id="new-habit-name" placeholder="ex: Méditer 10 min…" maxlength="60">
+    <button class="modal-btn" onclick="addHabit()">Ajouter</button>
+    <button class="modal-btn-secondary" onclick="closeModal('modal-add')">Annuler</button>
+  </div>
+</div>
+
+<!-- MODAL: Miss Reflection — ne peut pas être fermé sans écrire quelque chose -->
+<div class="modal-overlay" id="modal-miss">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Qu'est-ce que tu aurais pu faire différemment?</div>
+    <label>Pour : <span id="miss-habit-name" style="color:var(--accent); text-transform:none; font-size:13px;"></span></label>
+    <textarea id="miss-text" rows="4" placeholder="Sois honnête avec toi-même…"></textarea>
+    <button class="modal-btn" onclick="saveMiss()">Enregistrer</button>
+    <!-- Pas de bouton Annuler : la réflexion est obligatoire une fois marqué manqué -->
+    <button class="modal-btn-secondary" id="miss-cancel-btn" onclick="cancelMiss()" style="display:none">Annuler (défaire «manqué»)</button>
+  </div>
+</div>
+
+<!-- MODAL: Delete Habit -->
+<div class="modal-overlay" id="modal-delete">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" style="color:var(--danger)">Supprimer l'habitude?</div>
+    <p style="font-size:14px; color:var(--text2); margin-bottom:20px; line-height:1.6;">Cette action est irréversible. Toutes les données liées à cette habitude seront perdues.</p>
+    <button class="modal-btn" style="background:var(--danger)" onclick="confirmDelete()">Supprimer</button>
+    <button class="modal-btn-secondary" onclick="closeModal('modal-delete')">Annuler</button>
+  </div>
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────
+let state = {
+  habits: [],   // { id, name, createdAt }
+  days: {}      // { "YYYY-MM-DD": { habitId: { status: 'done'|'missed'|null, reflection: '' } } }
+};
+
+let pendingMissId = null;
+let pendingMissIsNew = false; // true = brand new miss (show cancel to undo), false = editing existing
+let pendingDeleteId = null;
+
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function save() {
+  localStorage.setItem('habitudes_state', JSON.stringify(state));
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem('habitudes_state');
+    if (raw) state = JSON.parse(raw);
+  } catch(e) {}
+  ensureToday();
+}
+
+function ensureToday() {
+  const key = todayKey();
+  if (!state.days[key]) state.days[key] = {};
+  state.habits.forEach(h => {
+    if (!state.days[key][h.id]) state.days[key][h.id] = { status: null, reflection: '' };
+  });
+}
+
+// ─── TIME ─────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  document.getElementById('clock').textContent = `${h}:${m}`;
+
+  const days = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+  const months = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  document.getElementById('day-label').textContent = days[now.getDay()];
+  document.getElementById('date-label').textContent = `${now.getDate()} ${months[now.getMonth()]}`;
+}
+
+// ─── TABS ─────────────────────────────────────────────────────────
+function showTab(tab, btn, fromNav) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+
+  if (fromNav) {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('nav-' + tab).classList.add('active');
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    const tabBtns = document.querySelectorAll('.tab');
+    const tabMap = { habitudes: 0, reflexions: 1, stats: 2 };
+    tabBtns[tabMap[tab]]?.classList.add('active');
+  } else if (btn) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('nav-' + tab).classList.add('active');
+  }
+
+  document.getElementById('fab').style.display = tab === 'habitudes' ? 'flex' : 'none';
+
+  if (tab === 'habitudes') renderHabits();
+  if (tab === 'reflexions') renderReflections();
+  if (tab === 'stats') renderStats();
+}
+
+// ─── HABITS RENDER ────────────────────────────────────────────────
+function renderHabits() {
+  const key = todayKey();
+  const day = state.days[key] || {};
+  const container = document.getElementById('habits-container');
+
+  if (state.habits.length === 0) {
+    container.innerHTML = `
+      <div class="habits-empty">
+        <div style="font-size:48px; margin-bottom:16px">✦</div>
+        <p>Aucune habitude encore.<br>Appuie sur <strong>+</strong> pour commencer.</p>
+      </div>`;
+    updateProgress();
+    return;
+  }
+
+  const pending = state.habits.filter(h => !day[h.id] || day[h.id].status === null);
+  const done    = state.habits.filter(h => day[h.id]?.status === 'done');
+  const missed  = state.habits.filter(h => day[h.id]?.status === 'missed');
+
+  let html = '';
+
+  if (pending.length > 0) {
+    html += `<div class="habit-group-label">À faire</div>`;
+    pending.forEach(h => html += habitCard(h, day[h.id]));
+  }
+
+  if (done.length > 0) {
+    html += `<div class="habit-group-label" style="margin-top:${pending.length?'16px':'0'}">Complétées</div>`;
+    done.forEach(h => html += habitCard(h, day[h.id]));
+  }
+
+  if (missed.length > 0) {
+    html += `<div class="habit-group-label" style="margin-top:16px; color:var(--danger)">Manquées</div>`;
+    missed.forEach(h => html += habitCard(h, day[h.id]));
+  }
+
+  container.innerHTML = html;
+  updateProgress();
+  updateReflectionsDot();
+}
+
+function habitCard(habit, dayData) {
+  const status     = dayData?.status || null;
+  const reflection = dayData?.reflection || '';
+  const streak     = getStreak(habit.id);
+
+  const checkClass = status === 'done' ? 'done' : status === 'missed' ? 'missed' : '';
+  const cardClass  = status === 'done' ? 'done' : status === 'missed' ? 'missed' : '';
+
+  // ✓ button: toggles null ↔ done only (missed state ignores clicks)
+  const checkClick = status === 'missed'
+    ? '' // missed circle is not clickable
+    : `onclick="toggleHabit('${habit.id}')"`;
+
+  // ✗ missed button: shown when NOT already missed
+  const missBtn = status !== 'missed'
+    ? `<button class="btn-icon btn-miss" onclick="markMissed('${habit.id}')" title="Marquer comme manqué">✕</button>`
+    : ``;
+
+  // 💬 edit reflection button when missed
+  const reflEditBtn = status === 'missed'
+    ? `<button class="btn-icon" onclick="openMiss('${habit.id}', false)" title="Modifier la réflexion" style="font-size:14px">💬</button>`
+    : '';
+
+  let reflectionHtml = '';
+  if (status === 'missed') {
+    if (reflection) {
+      reflectionHtml = `
+        <div class="habit-reflection">
+          <div class="reflection-badge">💬 Réflexion</div>
+          <div class="reflection-text">"${escHtml(reflection)}"</div>
+        </div>`;
+    } else {
+      reflectionHtml = `
+        <div class="reflection-prompt" onclick="openMiss('${habit.id}', false)">
+          ⚠ Réflexion obligatoire — qu'aurais-tu pu faire différemment?
+        </div>`;
+    }
+  }
+
+  // Undo missed: only available if missed (reset to null)
+  const undoBtn = status === 'missed'
+    ? `<button class="btn-icon" onclick="undoMissed('${habit.id}')" title="Défaire" style="font-size:12px; color:var(--text3)">↩</button>`
+    : '';
+
+  return `
+    <div class="habit-card ${cardClass}" id="card-${habit.id}">
+      <div class="habit-row">
+        <button class="habit-check ${checkClass}" ${checkClick} aria-label="${escHtml(habit.name)}"></button>
+        <div class="habit-info">
+          <div class="habit-name">${escHtml(habit.name)}</div>
+          <div class="habit-streak">${streak > 0 ? `🔥 ${streak} jour${streak>1?'s':''} de suite` : "Commence aujourd'hui"}</div>
+        </div>
+        <div class="habit-actions">
+          ${missBtn}
+          ${reflEditBtn}
+          ${undoBtn}
+          <button class="btn-icon" onclick="openDelete('${habit.id}')" title="Supprimer" style="color:var(--text3); font-size:18px">×</button>
+        </div>
+      </div>
+      ${reflectionHtml}
+    </div>`;
+}
+
+// ─── TOGGLE (null ↔ done only) ───────────────────────────────────
+function toggleHabit(id) {
+  const key = todayKey();
+  if (!state.days[key]) state.days[key] = {};
+  if (!state.days[key][id]) state.days[key][id] = { status: null, reflection: '' };
+
+  const current = state.days[key][id].status;
+  // Only toggle between null and done — missed is a separate action
+  if (current === null) {
+    state.days[key][id].status = 'done';
+  } else if (current === 'done') {
+    state.days[key][id].status = null;
+    // No reflection asked — it's just unchecking, not marking missed
+  }
+  // If missed, clicking the circle does nothing (user must use ↩ to undo)
+  save();
+  renderHabits();
+}
+
+// ─── MARK MISSED (explicit action via ✕ button) ──────────────────
+function markMissed(id) {
+  const key = todayKey();
+  if (!state.days[key]) state.days[key] = {};
+  if (!state.days[key][id]) state.days[key][id] = { status: null, reflection: '' };
+  state.days[key][id].status = 'missed';
+  state.days[key][id].reflection = '';
+  save();
+  renderHabits();
+  setTimeout(() => openMiss(id, true), 200);
+}
+
+// ─── UNDO MISSED ──────────────────────────────────────────────────
+function undoMissed(id) {
+  const key = todayKey();
+  if (state.days[key]?.[id]) {
+    state.days[key][id].status = null;
+    state.days[key][id].reflection = '';
+    save();
+    renderHabits();
+  }
+}
+
+// ─── MISS REFLECTION MODAL ───────────────────────────────────────
+function openMiss(id, isNew) {
+  pendingMissId = id;
+  pendingMissIsNew = isNew;
+  const habit = state.habits.find(h => h.id === id);
+  document.getElementById('miss-habit-name').textContent = habit?.name || '';
+  document.getElementById('miss-text').value = state.days[todayKey()]?.[id]?.reflection || '';
+  document.getElementById('miss-text').style.borderColor = '';
+  // Show cancel button only when it's a brand-new miss (lets user undo the missed status)
+  document.getElementById('miss-cancel-btn').style.display = isNew ? 'block' : 'none';
+  openModal('modal-miss');
+  setTimeout(() => document.getElementById('miss-text').focus(), 400);
+}
+
+function saveMiss() {
+  const text = document.getElementById('miss-text').value.trim();
+  if (!text) {
+    document.getElementById('miss-text').style.borderColor = 'var(--danger)';
+    return;
+  }
+  const key = todayKey();
+  state.days[key][pendingMissId].reflection = text;
+  state.days[key][pendingMissId].status = 'missed';
+  save();
+  closeModal('modal-miss');
+  renderHabits();
+}
+
+function cancelMiss() {
+  // Undo the missed status entirely
+  undoMissed(pendingMissId);
+  closeModal('modal-miss');
+}
+
+// ─── ADD HABIT ────────────────────────────────────────────────────
+function openAddHabit() {
+  document.getElementById('new-habit-name').value = '';
+  document.getElementById('new-habit-name').style.borderColor = '';
+  openModal('modal-add');
+  setTimeout(() => document.getElementById('new-habit-name').focus(), 400);
+}
+
+function addHabit() {
+  const name = document.getElementById('new-habit-name').value.trim();
+  if (!name) { document.getElementById('new-habit-name').style.borderColor = 'var(--danger)'; return; }
+  const habit = { id: 'h' + Date.now(), name, createdAt: Date.now() };
+  state.habits.push(habit);
+  const key = todayKey();
+  if (!state.days[key]) state.days[key] = {};
+  state.days[key][habit.id] = { status: null, reflection: '' };
+  save();
+  closeModal('modal-add');
+  renderHabits();
+}
+
+// ─── DELETE ───────────────────────────────────────────────────────
+function openDelete(id) {
+  pendingDeleteId = id;
+  openModal('modal-delete');
+}
+
+function confirmDelete() {
+  state.habits = state.habits.filter(h => h.id !== pendingDeleteId);
+  Object.keys(state.days).forEach(key => { delete state.days[key][pendingDeleteId]; });
+  save();
+  closeModal('modal-delete');
+  renderHabits();
+}
+
+// ─── REFLECTIONS TAB ─────────────────────────────────────────────
+function renderReflections() {
+  const container = document.getElementById('reflections-container');
+  const entries = [];
+
+  Object.entries(state.days)
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .forEach(([dateKey, dayData]) => {
+      Object.entries(dayData).forEach(([habitId, data]) => {
+        if (data.status === 'missed' && data.reflection) {
+          const habit = state.habits.find(h => h.id === habitId);
+          // "Resolved" = this habit was completed today (or on a later day)
+          const laterDone = isResolvedAfter(habitId, dateKey);
+          entries.push({
+            dateKey, habitId,
+            habitName: habit?.name || 'Habitude supprimée',
+            reflection: data.reflection,
+            resolved: laterDone
+          });
+        }
+      });
+    });
+
+  if (entries.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">✦</div>
+        <p>Aucune réflexion pour l'instant.<br>C'est une bonne chose!</p>
+      </div>`;
+    return;
+  }
+
+  const active   = entries.filter(e => !e.resolved);
+  const resolved = entries.filter(e => e.resolved);
+
+  let html = '';
+  if (active.length > 0) {
+    html += `<div class="habit-group-label">À résoudre</div>`;
+    active.forEach(e => html += reflCard(e));
+  }
+  if (resolved.length > 0) {
+    html += `<div class="habit-group-label" style="margin-top:20px; color:var(--success)">Résolues</div>`;
+    resolved.forEach(e => html += reflCard(e));
+  }
+
+  container.innerHTML = html;
+}
+
+function isResolvedAfter(habitId, missDateKey) {
+  // Considered resolved if the habit was done on any day AFTER the miss date
+  return Object.entries(state.days).some(([dateKey, dayData]) =>
+    dateKey > missDateKey && dayData[habitId]?.status === 'done'
+  );
+}
+
+function reflCard(e) {
+  const d = new Date(e.dateKey + 'T12:00:00');
+  const months = ['jan','fév','mars','avr','mai','juin','juil','août','sep','oct','nov','déc'];
+  const dateStr = `${d.getDate()} ${months[d.getMonth()]}`;
+  return `
+    <div class="reflection-card ${e.resolved ? 'resolved' : ''}">
+      <div class="reflection-habit">${escHtml(e.habitName)}</div>
+      <div class="reflection-q">"${escHtml(e.reflection)}"</div>
+      <div class="reflection-meta">${dateStr}${e.resolved ? ' · ✓ Complétée depuis' : ''}</div>
+    </div>`;
+}
+
+function updateReflectionsDot() {
+  const key = todayKey();
+  const day = state.days[key] || {};
+  const hasMissingReflection = state.habits.some(h =>
+    day[h.id]?.status === 'missed' && !day[h.id]?.reflection
+  );
+  const dot = document.getElementById('reflections-dot');
+  if (dot) dot.style.display = hasMissingReflection ? 'block' : 'none';
+}
+
+function updateProgress() {
+  const key = todayKey();
+  const day = state.days[key] || {};
+  const total = state.habits.length;
+  const done  = state.habits.filter(h => day[h.id]?.status === 'done').length;
+  const pct   = total === 0 ? 0 : Math.round((done / total) * 100);
+  document.getElementById('progress-bar').style.width = pct + '%';
+  document.getElementById('progress-label').textContent =
+    `${done} / ${total} habitude${total !== 1 ? 's' : ''} complétée${done !== 1 ? 's' : ''}`;
+}
+
+// ─── STATS ────────────────────────────────────────────────────────
+function getStreak(habitId) {
+  let streak = 0;
+  const today = new Date();
+  for (let i = 1; i <= 365; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if (state.days[key]?.[habitId]?.status === 'done') streak++;
+    else break;
+  }
+  return streak;
+}
+
+function renderStats() {
+  const allDays    = Object.values(state.days);
+  const totalDone  = allDays.reduce((a, d) => a + Object.values(d).filter(v => v.status === 'done').length, 0);
+  const totalMissed= allDays.reduce((a, d) => a + Object.values(d).filter(v => v.status === 'missed').length, 0);
+  const maxStreak  = state.habits.reduce((max, h) => Math.max(max, getStreak(h.id)), 0);
+  const daysTracked= Object.keys(state.days).length;
+
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">Complétées</div>
+      <div class="stat-value">${totalDone}</div>
+      <div class="stat-sub">au total</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Manquées</div>
+      <div class="stat-value" style="color:var(--danger)">${totalMissed}</div>
+      <div class="stat-sub">au total</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Meilleure série</div>
+      <div class="stat-value">${maxStreak}</div>
+      <div class="stat-sub">jour${maxStreak !== 1 ? 's' : ''}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Jours suivis</div>
+      <div class="stat-value">${daysTracked}</div>
+      <div class="stat-sub">depuis le début</div>
+    </div>`;
+
+  let habitHtml = '';
+  if (state.habits.length > 0) {
+    habitHtml = `<div class="habit-group-label">Par habitude</div>`;
+    state.habits.forEach(h => {
+      let done = 0, missed = 0;
+      Object.values(state.days).forEach(d => {
+        if (d[h.id]?.status === 'done')   done++;
+        if (d[h.id]?.status === 'missed') missed++;
+      });
+      const total  = done + missed;
+      const pct    = total === 0 ? 0 : Math.round((done / total) * 100);
+      const streak = getStreak(h.id);
+      habitHtml += `
+        <div class="habit-card" style="margin-bottom:10px;">
+          <div class="habit-name" style="margin-bottom:8px">${escHtml(h.name)}</div>
+          <div class="progress-bar-wrap" style="margin-bottom:6px">
+            <div class="progress-bar-fill" style="width:${pct}%"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3)">
+            <span>${pct}% de réussite</span>
+            <span>${streak > 0 ? `🔥 ${streak}j` : '–'}</span>
+          </div>
+        </div>`;
+    });
+  }
+  document.getElementById('habit-stats-list').innerHTML = habitHtml;
+}
+
+// ─── MODAL ────────────────────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// Close modals on backdrop click (except miss modal — reflection is required)
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target !== overlay) return;
+    if (overlay.id === 'modal-miss') return; // can't dismiss without saving
+    closeModal(overlay.id);
+  });
+});
+
+// ─── UTILS ────────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+// ─── DAILY RESET CHECK ───────────────────────────────────────────
+function checkNewDay() {
+  ensureToday();
+  // Purge days older than 90 days
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 90);
+  Object.keys(state.days).forEach(key => {
+    if (new Date(key + 'T00:00:00') < cutoff) delete state.days[key];
+  });
+  save();
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────
+load();
+checkNewDay();
+updateClock();
+
+// 1. Met à jour l'heure TOUTES LES SECONDES
+setInterval(updateClock, 1000);
+
+// 2. Vérifie le changement de jour chaque minute
+setInterval(() => { 
+  checkNewDay(); 
+  renderHabits(); 
+}, 60000);
+
+// 3. Force la mise à jour quand tu rouvres l'application (sortie de veille)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    updateClock();
+    renderHabits();
+  }
+});
+
+renderHabits();
+
+// On ferme le script principal
+</script>
+
+<script>
+  // Bloc pour l'installation PWA
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
+</script>
+
+</body>
+</html>

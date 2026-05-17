@@ -189,7 +189,6 @@
     gap: 12px;
   }
 
-  /* Checkmark circle — toggles null ↔ done only */
   .habit-check {
     width: 26px;
     height: 26px;
@@ -278,7 +277,6 @@
   .btn-icon:active { transform: scale(0.95); }
   .btn-icon:hover { border-color: var(--border2); color: var(--text); }
 
-  /* The ✗ "missed" button */
   .btn-miss {
     color: var(--danger);
     border-color: rgba(224,90,90,0.3);
@@ -310,7 +308,6 @@
     line-height: 1.5;
   }
 
-  /* Tooltip hint under missed card with no reflection */
   .reflection-prompt {
     display: flex;
     align-items: center;
@@ -322,6 +319,18 @@
     font-size: 13px;
     color: var(--danger);
     cursor: pointer;
+  }
+
+  /* "Rien" badge on missed card */
+  .no-reflection-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    color: var(--text3);
+    background: var(--surface2);
+    padding: 3px 8px;
+    border-radius: 20px;
+    margin-top: 10px;
   }
 
   .fab {
@@ -436,6 +445,16 @@
     margin-bottom: 16px;
   }
 
+  .modal-date-context {
+    font-size: 12px;
+    color: var(--accent);
+    background: var(--accent-dim);
+    padding: 4px 10px;
+    border-radius: 20px;
+    display: inline-block;
+    margin-bottom: 14px;
+  }
+
   .modal label {
     display: block;
     font-size: 12px;
@@ -495,6 +514,7 @@
 
   .modal-btn-secondary:hover { border-color: var(--border2); color: var(--text); }
 
+  /* Reflection cards */
   .reflection-card {
     background: var(--surface);
     border: 0.5px solid var(--border);
@@ -525,6 +545,36 @@
   }
 
   .reflection-meta { font-size: 11px; color: var(--text3); }
+
+  /* Dismiss buttons row on reflection cards */
+  .reflection-dismiss-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 0.5px solid var(--border);
+  }
+
+  .btn-dismiss {
+    flex: 1;
+    padding: 7px 10px;
+    font-size: 12px;
+    border-radius: var(--radius-sm);
+    border: 0.5px solid var(--border);
+    background: none;
+    color: var(--text2);
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s;
+  }
+
+  .btn-dismiss-resolve {
+    border-color: rgba(90,184,122,0.3);
+    color: var(--success);
+  }
+  .btn-dismiss-resolve:hover { background: var(--success-dim); border-color: var(--success); }
+
+  .btn-dismiss-unimportant:hover { border-color: var(--border2); color: var(--text); }
 
   .empty-state {
     text-align: center;
@@ -569,6 +619,23 @@
     border-radius: 50%;
     border: 2px solid var(--bg);
   }
+
+  /* Reset stats button */
+  .btn-reset-stats {
+    width: 100%;
+    padding: 13px;
+    background: none;
+    color: var(--danger);
+    border: 0.5px solid rgba(224,90,90,0.3);
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    margin-top: 24px;
+    transition: all 0.15s;
+    letter-spacing: 0.02em;
+  }
+  .btn-reset-stats:hover { background: var(--danger-dim); border-color: var(--danger); }
 </style>
 </head>
 <body>
@@ -606,6 +673,7 @@
   <div class="section-title">Vue d'ensemble</div>
   <div class="stats-grid" id="stats-grid"></div>
   <div id="habit-stats-list"></div>
+  <button class="btn-reset-stats" onclick="openModal('modal-reset')">⚠ Réinitialiser les statistiques</button>
 </div>
 
 <button class="fab" id="fab" onclick="openAddHabit()">+</button>
@@ -640,16 +708,20 @@
   </div>
 </div>
 
-<!-- MODAL: Miss Reflection — ne peut pas être fermé sans écrire quelque chose -->
+<!-- MODAL: Miss Reflection -->
 <div class="modal-overlay" id="modal-miss">
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title">Qu'est-ce que tu aurais pu faire différemment?</div>
+    <!-- Date context shown only for past-day auto-misses -->
+    <div class="modal-date-context" id="miss-date-context" style="display:none"></div>
     <label>Pour : <span id="miss-habit-name" style="color:var(--accent); text-transform:none; font-size:13px;"></span></label>
     <textarea id="miss-text" rows="4" placeholder="Sois honnête avec toi-même…"></textarea>
     <button class="modal-btn" onclick="saveMiss()">Enregistrer</button>
-    <!-- Pas de bouton Annuler : la réflexion est obligatoire une fois marqué manqué -->
-    <button class="modal-btn-secondary" id="miss-cancel-btn" onclick="cancelMiss()" style="display:none">Annuler (défaire «manqué»)</button>
+    <!-- "Rien" : marque comme manqué sans enregistrer de réflexion -->
+    <button class="modal-btn-secondary" onclick="saveRien()" style="color:var(--text3); font-size:13px;">Rien — ne pas enregistrer</button>
+    <!-- Annuler : défaire le statut manqué (aujourd'hui seulement, nouveau miss) -->
+    <button class="modal-btn-secondary" id="miss-cancel-btn" onclick="cancelMiss()" style="display:none; margin-top:6px; font-size:13px; color:var(--text3);">Annuler</button>
   </div>
 </div>
 
@@ -664,16 +736,31 @@
   </div>
 </div>
 
+<!-- MODAL: Reset Stats -->
+<div class="modal-overlay" id="modal-reset">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" style="color:var(--danger)">Réinitialiser les stats?</div>
+    <p style="font-size:14px; color:var(--text2); margin-bottom:20px; line-height:1.6;">
+      Toutes les données de suivi seront supprimées (historique, séries, réflexions). Tes habitudes seront conservées.
+    </p>
+    <button class="modal-btn" style="background:var(--danger)" onclick="confirmReset()">Réinitialiser</button>
+    <button class="modal-btn-secondary" onclick="closeModal('modal-reset')">Annuler</button>
+  </div>
+</div>
+
 <script>
 // ─── STATE ───────────────────────────────────────────────────────
 let state = {
   habits: [],   // { id, name, createdAt }
-  days: {}      // { "YYYY-MM-DD": { habitId: { status: 'done'|'missed'|null, reflection: '' } } }
+  days: {}      // { "YYYY-MM-DD": { habitId: { status, reflection, noReflection, dismissed, autoMissed } } }
 };
 
-let pendingMissId = null;
-let pendingMissIsNew = false; // true = brand new miss (show cancel to undo), false = editing existing
-let pendingDeleteId = null;
+let pendingMissId       = null;
+let pendingMissDateKey  = null;
+let pendingMissIsNew    = false;
+let pendingDeleteId     = null;
+let autoMissQueue       = [];
 
 function todayKey() {
   const d = new Date();
@@ -707,9 +794,9 @@ function updateClock() {
   const m = String(now.getMinutes()).padStart(2,'0');
   document.getElementById('clock').textContent = `${h}:${m}`;
 
-  const days = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+  const days   = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
   const months = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
-  document.getElementById('day-label').textContent = days[now.getDay()];
+  document.getElementById('day-label').textContent  = days[now.getDay()];
   document.getElementById('date-label').textContent = `${now.getDate()} ${months[now.getMonth()]}`;
 }
 
@@ -723,7 +810,7 @@ function showTab(tab, btn, fromNav) {
     document.getElementById('nav-' + tab).classList.add('active');
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     const tabBtns = document.querySelectorAll('.tab');
-    const tabMap = { habitudes: 0, reflexions: 1, stats: 2 };
+    const tabMap  = { habitudes: 0, reflexions: 1, stats: 2 };
     tabBtns[tabMap[tab]]?.classList.add('active');
   } else if (btn) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -734,9 +821,9 @@ function showTab(tab, btn, fromNav) {
 
   document.getElementById('fab').style.display = tab === 'habitudes' ? 'flex' : 'none';
 
-  if (tab === 'habitudes') renderHabits();
+  if (tab === 'habitudes')  renderHabits();
   if (tab === 'reflexions') renderReflections();
-  if (tab === 'stats') renderStats();
+  if (tab === 'stats')      renderStats();
 }
 
 // ─── HABITS RENDER ────────────────────────────────────────────────
@@ -765,12 +852,10 @@ function renderHabits() {
     html += `<div class="habit-group-label">À faire</div>`;
     pending.forEach(h => html += habitCard(h, day[h.id]));
   }
-
   if (done.length > 0) {
     html += `<div class="habit-group-label" style="margin-top:${pending.length?'16px':'0'}">Complétées</div>`;
     done.forEach(h => html += habitCard(h, day[h.id]));
   }
-
   if (missed.length > 0) {
     html += `<div class="habit-group-label" style="margin-top:16px; color:var(--danger)">Manquées</div>`;
     missed.forEach(h => html += habitCard(h, day[h.id]));
@@ -784,29 +869,31 @@ function renderHabits() {
 function habitCard(habit, dayData) {
   const status     = dayData?.status || null;
   const reflection = dayData?.reflection || '';
+  const noRefl     = dayData?.noReflection || false;
   const streak     = getStreak(habit.id);
 
   const checkClass = status === 'done' ? 'done' : status === 'missed' ? 'missed' : '';
   const cardClass  = status === 'done' ? 'done' : status === 'missed' ? 'missed' : '';
 
-  // ✓ button: toggles null ↔ done only (missed state ignores clicks)
-  const checkClick = status === 'missed'
-    ? '' // missed circle is not clickable
-    : `onclick="toggleHabit('${habit.id}')"`;
+  const checkClick = status === 'missed' ? '' : `onclick="toggleHabit('${habit.id}')"`;
 
-  // ✗ missed button: shown when NOT already missed
   const missBtn = status !== 'missed'
     ? `<button class="btn-icon btn-miss" onclick="markMissed('${habit.id}')" title="Marquer comme manqué">✕</button>`
-    : ``;
+    : '';
 
-  // 💬 edit reflection button when missed
-  const reflEditBtn = status === 'missed'
+  const reflEditBtn = status === 'missed' && !noRefl
     ? `<button class="btn-icon" onclick="openMiss('${habit.id}', false)" title="Modifier la réflexion" style="font-size:14px">💬</button>`
+    : '';
+
+  const undoBtn = status === 'missed'
+    ? `<button class="btn-icon" onclick="undoMissed('${habit.id}')" title="Défaire" style="font-size:12px; color:var(--text3)">↩</button>`
     : '';
 
   let reflectionHtml = '';
   if (status === 'missed') {
-    if (reflection) {
+    if (noRefl) {
+      reflectionHtml = `<div class="no-reflection-badge">— Pas de réflexion</div>`;
+    } else if (reflection) {
       reflectionHtml = `
         <div class="habit-reflection">
           <div class="reflection-badge">💬 Réflexion</div>
@@ -819,11 +906,6 @@ function habitCard(habit, dayData) {
         </div>`;
     }
   }
-
-  // Undo missed: only available if missed (reset to null)
-  const undoBtn = status === 'missed'
-    ? `<button class="btn-icon" onclick="undoMissed('${habit.id}')" title="Défaire" style="font-size:12px; color:var(--text3)">↩</button>`
-    : '';
 
   return `
     <div class="habit-card ${cardClass}" id="card-${habit.id}">
@@ -844,58 +926,71 @@ function habitCard(habit, dayData) {
     </div>`;
 }
 
-// ─── TOGGLE (null ↔ done only) ───────────────────────────────────
+// ─── TOGGLE (null ↔ done) ─────────────────────────────────────────
 function toggleHabit(id) {
   const key = todayKey();
   if (!state.days[key]) state.days[key] = {};
   if (!state.days[key][id]) state.days[key][id] = { status: null, reflection: '' };
 
   const current = state.days[key][id].status;
-  // Only toggle between null and done — missed is a separate action
-  if (current === null) {
-    state.days[key][id].status = 'done';
-  } else if (current === 'done') {
-    state.days[key][id].status = null;
-    // No reflection asked — it's just unchecking, not marking missed
-  }
-  // If missed, clicking the circle does nothing (user must use ↩ to undo)
+  if (current === null)   state.days[key][id].status = 'done';
+  else if (current === 'done') state.days[key][id].status = null;
   save();
   renderHabits();
 }
 
-// ─── MARK MISSED (explicit action via ✕ button) ──────────────────
+// ─── MARK MISSED ──────────────────────────────────────────────────
 function markMissed(id) {
   const key = todayKey();
   if (!state.days[key]) state.days[key] = {};
   if (!state.days[key][id]) state.days[key][id] = { status: null, reflection: '' };
-  state.days[key][id].status = 'missed';
-  state.days[key][id].reflection = '';
+  state.days[key][id].status      = 'missed';
+  state.days[key][id].reflection  = '';
+  state.days[key][id].noReflection = false;
   save();
   renderHabits();
-  setTimeout(() => openMiss(id, true), 200);
+  setTimeout(() => openMiss(id, true, key), 200);
 }
 
 // ─── UNDO MISSED ──────────────────────────────────────────────────
 function undoMissed(id) {
   const key = todayKey();
   if (state.days[key]?.[id]) {
-    state.days[key][id].status = null;
-    state.days[key][id].reflection = '';
+    state.days[key][id].status      = null;
+    state.days[key][id].reflection  = '';
+    state.days[key][id].noReflection = false;
     save();
     renderHabits();
   }
 }
 
 // ─── MISS REFLECTION MODAL ───────────────────────────────────────
-function openMiss(id, isNew) {
-  pendingMissId = id;
-  pendingMissIsNew = isNew;
+function openMiss(id, isNew, dateKey) {
+  dateKey = dateKey || todayKey();
+  pendingMissId      = id;
+  pendingMissDateKey = dateKey;
+  pendingMissIsNew   = isNew;
+
   const habit = state.habits.find(h => h.id === id);
   document.getElementById('miss-habit-name').textContent = habit?.name || '';
-  document.getElementById('miss-text').value = state.days[todayKey()]?.[id]?.reflection || '';
+  document.getElementById('miss-text').value = state.days[dateKey]?.[id]?.reflection || '';
   document.getElementById('miss-text').style.borderColor = '';
-  // Show cancel button only when it's a brand-new miss (lets user undo the missed status)
-  document.getElementById('miss-cancel-btn').style.display = isNew ? 'block' : 'none';
+
+  // Show date context for past days
+  const isToday   = dateKey === todayKey();
+  const dateCtxEl = document.getElementById('miss-date-context');
+  if (!isToday) {
+    const d      = new Date(dateKey + 'T12:00:00');
+    const months = ['jan','fév','mars','avr','mai','juin','juil','août','sep','oct','nov','déc'];
+    dateCtxEl.textContent = `📅 Pour le ${d.getDate()} ${months[d.getMonth()]}`;
+    dateCtxEl.style.display = 'inline-block';
+  } else {
+    dateCtxEl.style.display = 'none';
+  }
+
+  // Cancel button: today + new miss only
+  document.getElementById('miss-cancel-btn').style.display = (isNew && isToday) ? 'block' : 'none';
+
   openModal('modal-miss');
   setTimeout(() => document.getElementById('miss-text').focus(), 400);
 }
@@ -906,18 +1001,58 @@ function saveMiss() {
     document.getElementById('miss-text').style.borderColor = 'var(--danger)';
     return;
   }
-  const key = todayKey();
-  state.days[key][pendingMissId].reflection = text;
-  state.days[key][pendingMissId].status = 'missed';
+  const key = pendingMissDateKey || todayKey();
+  if (!state.days[key]) state.days[key] = {};
+  if (!state.days[key][pendingMissId]) state.days[key][pendingMissId] = { status: 'missed', reflection: '' };
+  state.days[key][pendingMissId].reflection   = text;
+  state.days[key][pendingMissId].status       = 'missed';
+  state.days[key][pendingMissId].noReflection = false;
   save();
   closeModal('modal-miss');
-  renderHabits();
+  if (key === todayKey()) renderHabits();
+  processAutoMissQueue();
+}
+
+// "Rien" — garde le statut manqué mais n'enregistre aucune réflexion
+function saveRien() {
+  const key = pendingMissDateKey || todayKey();
+  if (!state.days[key]) state.days[key] = {};
+  if (!state.days[key][pendingMissId]) state.days[key][pendingMissId] = { status: 'missed', reflection: '' };
+  state.days[key][pendingMissId].noReflection = true;
+  state.days[key][pendingMissId].reflection   = '';
+  state.days[key][pendingMissId].status       = 'missed';
+  save();
+  closeModal('modal-miss');
+  if (key === todayKey()) renderHabits();
+  processAutoMissQueue();
 }
 
 function cancelMiss() {
-  // Undo the missed status entirely
   undoMissed(pendingMissId);
   closeModal('modal-miss');
+}
+
+// ─── AUTO-MISS QUEUE (jours passés) ──────────────────────────────
+function buildAutoMissQueue() {
+  const todayK = todayKey();
+  autoMissQueue = [];
+  Object.entries(state.days)
+    .filter(([key]) => key < todayK)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .forEach(([dateKey, dayData]) => {
+      Object.entries(dayData).forEach(([habitId, data]) => {
+        if (data.status === 'missed' && !data.reflection && !data.noReflection && !data.dismissed) {
+          const habit = state.habits.find(h => h.id === habitId);
+          if (habit) autoMissQueue.push({ habitId, dateKey });
+        }
+      });
+    });
+}
+
+function processAutoMissQueue() {
+  if (autoMissQueue.length === 0) return;
+  const next = autoMissQueue.shift();
+  setTimeout(() => openMiss(next.habitId, false, next.dateKey), 350);
 }
 
 // ─── ADD HABIT ────────────────────────────────────────────────────
@@ -955,18 +1090,27 @@ function confirmDelete() {
   renderHabits();
 }
 
+// ─── RESET STATS ─────────────────────────────────────────────────
+function confirmReset() {
+  state.days = {};
+  ensureToday();
+  save();
+  closeModal('modal-reset');
+  renderStats();
+}
+
 // ─── REFLECTIONS TAB ─────────────────────────────────────────────
 function renderReflections() {
   const container = document.getElementById('reflections-container');
-  const entries = [];
+  const entries   = [];
 
   Object.entries(state.days)
     .sort((a, b) => b[0].localeCompare(a[0]))
     .forEach(([dateKey, dayData]) => {
       Object.entries(dayData).forEach(([habitId, data]) => {
-        if (data.status === 'missed' && data.reflection) {
-          const habit = state.habits.find(h => h.id === habitId);
-          // "Resolved" = this habit was completed today (or on a later day)
+        // Exclude: no reflection text, "rien" flagged, or dismissed
+        if (data.status === 'missed' && data.reflection && !data.noReflection && !data.dismissed) {
+          const habit     = state.habits.find(h => h.id === habitId);
           const laterDone = isResolvedAfter(habitId, dateKey);
           entries.push({
             dateKey, habitId,
@@ -1004,14 +1148,13 @@ function renderReflections() {
 }
 
 function isResolvedAfter(habitId, missDateKey) {
-  // Considered resolved if the habit was done on any day AFTER the miss date
   return Object.entries(state.days).some(([dateKey, dayData]) =>
     dateKey > missDateKey && dayData[habitId]?.status === 'done'
   );
 }
 
 function reflCard(e) {
-  const d = new Date(e.dateKey + 'T12:00:00');
+  const d      = new Date(e.dateKey + 'T12:00:00');
   const months = ['jan','fév','mars','avr','mai','juin','juil','août','sep','oct','nov','déc'];
   const dateStr = `${d.getDate()} ${months[d.getMonth()]}`;
   return `
@@ -1019,22 +1162,37 @@ function reflCard(e) {
       <div class="reflection-habit">${escHtml(e.habitName)}</div>
       <div class="reflection-q">"${escHtml(e.reflection)}"</div>
       <div class="reflection-meta">${dateStr}${e.resolved ? ' · ✓ Complétée depuis' : ''}</div>
+      <div class="reflection-dismiss-row">
+        <button class="btn-dismiss btn-dismiss-resolve" onclick="dismissReflection('${e.habitId}','${e.dateKey}')">✓ Résolu</button>
+        <button class="btn-dismiss btn-dismiss-unimportant" onclick="dismissReflection('${e.habitId}','${e.dateKey}')">Pas important</button>
+      </div>
     </div>`;
+}
+
+// Supprime une réflexion de la liste (résolu ou pas important)
+function dismissReflection(habitId, dateKey) {
+  if (state.days[dateKey]?.[habitId]) {
+    state.days[dateKey][habitId].dismissed = true;
+    save();
+    renderReflections();
+  }
 }
 
 function updateReflectionsDot() {
   const key = todayKey();
   const day = state.days[key] || {};
-  const hasMissingReflection = state.habits.some(h =>
-    day[h.id]?.status === 'missed' && !day[h.id]?.reflection
+  const hasMissing = state.habits.some(h =>
+    day[h.id]?.status === 'missed' &&
+    !day[h.id]?.reflection &&
+    !day[h.id]?.noReflection
   );
   const dot = document.getElementById('reflections-dot');
-  if (dot) dot.style.display = hasMissingReflection ? 'block' : 'none';
+  if (dot) dot.style.display = hasMissing ? 'block' : 'none';
 }
 
 function updateProgress() {
-  const key = todayKey();
-  const day = state.days[key] || {};
+  const key   = todayKey();
+  const day   = state.days[key] || {};
   const total = state.habits.length;
   const done  = state.habits.filter(h => day[h.id]?.status === 'done').length;
   const pct   = total === 0 ? 0 : Math.round((done / total) * 100);
@@ -1058,11 +1216,11 @@ function getStreak(habitId) {
 }
 
 function renderStats() {
-  const allDays    = Object.values(state.days);
-  const totalDone  = allDays.reduce((a, d) => a + Object.values(d).filter(v => v.status === 'done').length, 0);
-  const totalMissed= allDays.reduce((a, d) => a + Object.values(d).filter(v => v.status === 'missed').length, 0);
-  const maxStreak  = state.habits.reduce((max, h) => Math.max(max, getStreak(h.id)), 0);
-  const daysTracked= Object.keys(state.days).length;
+  const allDays     = Object.values(state.days);
+  const totalDone   = allDays.reduce((a, d) => a + Object.values(d).filter(v => v.status === 'done').length, 0);
+  const totalMissed = allDays.reduce((a, d) => a + Object.values(d).filter(v => v.status === 'missed').length, 0);
+  const maxStreak   = state.habits.reduce((max, h) => Math.max(max, getStreak(h.id)), 0);
+  const daysTracked = Object.keys(state.days).length;
 
   document.getElementById('stats-grid').innerHTML = `
     <div class="stat-card">
@@ -1115,14 +1273,13 @@ function renderStats() {
 }
 
 // ─── MODAL ────────────────────────────────────────────────────────
-function openModal(id) { document.getElementById(id).classList.add('open'); }
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
-// Close modals on backdrop click (except miss modal — reflection is required)
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
   overlay.addEventListener('click', e => {
     if (e.target !== overlay) return;
-    if (overlay.id === 'modal-miss') return; // can't dismiss without saving
+    if (overlay.id === 'modal-miss') return; // can't dismiss without choosing
     closeModal(overlay.id);
   });
 });
@@ -1136,15 +1293,30 @@ function escHtml(s) {
     .replace(/"/g,'&quot;');
 }
 
-// ─── DAILY RESET CHECK ───────────────────────────────────────────
+// ─── DAILY RESET + AUTO-MISS ─────────────────────────────────────
 function checkNewDay() {
-  ensureToday();
   // Purge days older than 90 days
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - 90);
   Object.keys(state.days).forEach(key => {
     if (new Date(key + 'T00:00:00') < cutoff) delete state.days[key];
   });
+
+  // Auto-miss: marque comme manqué tout ce qui est null dans les jours passés
+  const todayK = todayKey();
+  Object.keys(state.days).forEach(key => {
+    if (key < todayK) {
+      state.habits.forEach(h => {
+        if (state.days[key][h.id] && state.days[key][h.id].status === null) {
+          state.days[key][h.id].status     = 'missed';
+          state.days[key][h.id].autoMissed = true;
+          state.days[key][h.id].reflection = '';
+        }
+      });
+    }
+  });
+
+  ensureToday();
   save();
 }
 
@@ -1153,30 +1325,35 @@ load();
 checkNewDay();
 updateClock();
 
-// 1. Met à jour l'heure TOUTES LES SECONDES
+// Bâtit la file des auto-miss qui n'ont pas de réflexion
+buildAutoMissQueue();
+
 setInterval(updateClock, 1000);
 
-// 2. Vérifie le changement de jour chaque minute
-setInterval(() => { 
-  checkNewDay(); 
-  renderHabits(); 
+setInterval(() => {
+  checkNewDay();
+  renderHabits();
 }, 60000);
 
-// 3. Force la mise à jour quand tu rouvres l'application (sortie de veille)
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
     updateClock();
+    checkNewDay();
+    buildAutoMissQueue();
     renderHabits();
+    // Lance la file uniquement si aucun modal n'est déjà ouvert
+    const anyOpen = document.querySelector('.modal-overlay.open');
+    if (!anyOpen) processAutoMissQueue();
   }
 });
 
 renderHabits();
 
-// On ferme le script principal
+// Lance la file des réflexions en attente au démarrage
+setTimeout(processAutoMissQueue, 800);
 </script>
 
 <script>
-  // Bloc pour l'installation PWA
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js');
   }
